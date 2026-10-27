@@ -1,0 +1,8 @@
+spring:
+  data:
+    redis:
+      client-type: jedis
+      sentinel:
+        master: mymaster
+        nodes:
+          - localhost:26381

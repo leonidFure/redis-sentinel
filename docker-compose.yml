@@ -1,0 +1,60 @@
+services:
+  redis-master:
+    image: redis:7
+    command: ["/bin/sh", "/usr/local/bin/start-redis-and-sentinel.sh"]
+    environment:
+      REDIS_CONF: /etc/redis/redis.conf
+      SENTINEL_CONF: /etc/redis/sentinel.conf
+    ports:
+      - "6379:6379"
+      - "26379:26379"
+    volumes:
+      - ./docker/redis/master.conf:/etc/redis/redis.conf:ro
+      - ./docker/redis/sentinel-master.conf:/etc/redis/sentinel.conf:ro
+      - ./docker/redis/start-redis-and-sentinel.sh:/usr/local/bin/start-redis-and-sentinel.sh:ro
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis-replica:
+    image: redis:7
+    command: ["/bin/sh", "/usr/local/bin/start-redis-and-sentinel.sh"]
+    environment:
+      REDIS_CONF: /etc/redis/redis.conf
+      SENTINEL_CONF: /etc/redis/sentinel.conf
+    ports:
+      - "6380:6379"
+      - "26380:26379"
+    volumes:
+      - ./docker/redis/replica.conf:/etc/redis/redis.conf:ro
+      - ./docker/redis/sentinel-replica.conf:/etc/redis/sentinel.conf:ro
+      - ./docker/redis/start-redis-and-sentinel.sh:/usr/local/bin/start-redis-and-sentinel.sh:ro
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  sentinel:
+    image: redis:7
+    command: ["/bin/sh", "/usr/local/bin/start-sentinel.sh"]
+    environment:
+      SENTINEL_CONF: /etc/redis/sentinel.conf
+    ports:
+      - "26381:26379"
+    volumes:
+      - ./docker/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
+      - ./docker/redis/start-sentinel.sh:/usr/local/bin/start-sentinel.sh:ro
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
